@@ -2,11 +2,6 @@
 
 A real-time safety monitoring system for hazardous work zones, powered by **RF-DETR** (Object Detection) and **BoT-SORT** (Tracking). This system automatically detects workers, PPE (Personal Protective Equipment), and fire safety equipment to prevent accidents.
 
-![Project Status](https://img.shields.io/badge/Status-Active-success)
-![Python](https://img.shields.io/badge/Backend-FastAPI-009688)
-![Flutter](https://img.shields.io/badge/Frontend-Flutter-02569B)
-![AI](https://img.shields.io/badge/Model-RF--DETR-FF5722)
-
 ## 🌟 Key Features
 
 - **Real-time Monitoring**: Low-latency video streaming via WebSocket.
