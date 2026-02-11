@@ -1,0 +1,40 @@
+# Models (large binary files)
+*.pth
+*.pt
+*.onnx
+*.engine
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.db
+venv/
+.venv/
+
+# Flutter
+frontend/.dart_tool/
+frontend/.packages
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Test videos (large files)
+test_videos/
+
+# Snapshots
+backend/snapshots/
+
+# Training artifacts
+rfdetr_complete/
