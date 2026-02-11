@@ -8,7 +8,7 @@ A real-time safety monitoring system for hazardous work zones, powered by **RF-D
 - **Advanced AI Detection**: Utilizes **RF-DETR** for high-accuracy detection of small objects (helmets, masks).
 - **Robust Tracking**: INTEGRATED **BoT-SORT** to track workers even during occlusion or fast movement.
 - **Smart ROI (Region of Interest)**:
-    - Drag & Drop zone creation.
+    - Point zone creation.
     - **Stay Time Analysis**: Tracks how long a worker stays in a hazardous zone.
     - **Zone Types**: Warning (Yellow) vs Danger (Red).
 - **Safety Rules Engine**:
