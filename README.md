@@ -15,7 +15,6 @@ A real-time safety monitoring system for hazardous work zones, powered by **RF-D
     - **PPE Compliance**: Detects missing helmets, masks, or vests.
     - **Fire Safety**: Alerts if fire extinguishers are missing in key areas.
     - **Intrusion Detection**: Alerts when unauthorized personnel enter danger zones.
-- **Korean Localization**: Full UI and event logs localized for Korean industrial environments.
 
 ## 🏗️ System Architecture
 
