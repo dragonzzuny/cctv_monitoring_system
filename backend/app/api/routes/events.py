@@ -1,7 +1,7 @@
 """
 Event REST API routes.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, desc
@@ -190,7 +190,7 @@ async def acknowledge_event(
         )
 
     event.is_acknowledged = True
-    event.acknowledged_at = datetime.utcnow()
+    event.acknowledged_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(event)
 
@@ -215,7 +215,7 @@ async def acknowledge_all_events(
     result = await db.execute(query)
     events = result.scalars().all()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     count = 0
     alarm_manager = get_alarm_manager()
 

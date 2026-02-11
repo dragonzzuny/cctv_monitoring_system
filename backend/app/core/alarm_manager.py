@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any
 import cv2
@@ -73,7 +73,7 @@ class AlarmManager:
             "snapshot_path": snapshot_path,
             "detection_data": event.detection_data,
             "is_acknowledged": False,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "timestamp": event.timestamp
         }
 

@@ -1,7 +1,7 @@
 """
 SQLAlchemy database models.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy import String, Integer, Float, Boolean, DateTime, ForeignKey, Text, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -18,8 +18,8 @@ class Camera(Base):
     source: Mapped[str] = mapped_column(String(500), nullable=False)  # File path or RTSP URL
     source_type: Mapped[str] = mapped_column(String(20), default="file")  # "file" or "rtsp"
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     rois: Mapped[List["ROI"]] = relationship("ROI", back_populates="camera", cascade="all, delete-orphan")
@@ -38,8 +38,8 @@ class ROI(Base):
     color: Mapped[str] = mapped_column(String(20), default="#FF0000")
     zone_type: Mapped[str] = mapped_column(String(20), default="warning")  # "warning" or "danger"
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     camera: Mapped["Camera"] = relationship("Camera", back_populates="rois")
@@ -63,8 +63,8 @@ class Event(Base):
     roi_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("rois.id", ondelete="SET NULL"), nullable=True)
     detection_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON detection details
     is_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)
-    acknowledged_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    acknowledged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     camera: Mapped["Camera"] = relationship("Camera", back_populates="events")
@@ -78,8 +78,8 @@ class Checklist(Base):
     camera_id: Mapped[int] = mapped_column(Integer, ForeignKey("cameras.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     camera: Mapped["Camera"] = relationship("Camera", back_populates="checklists")
@@ -96,8 +96,8 @@ class ChecklistItem(Base):
     description: Mapped[str] = mapped_column(String(200), nullable=False)
     is_checked: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_checked: Mapped[bool] = mapped_column(Boolean, default=False)  # Automatically checked by system
-    checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     checklist: Mapped["Checklist"] = relationship("Checklist", back_populates="items")
@@ -111,4 +111,4 @@ class SafetyRegulation(Base):
     category: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "산업안전보건법"
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -30,6 +30,7 @@ class ROIUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     points: Optional[List[Point]] = Field(None, min_length=3)
     color: Optional[str] = None
+    zone_type: Optional[str] = None
     is_active: Optional[bool] = None
 
 

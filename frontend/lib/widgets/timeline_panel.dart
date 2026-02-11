@@ -158,6 +158,13 @@ class _TimelinePanelState extends ConsumerState<TimelinePanel> {
                   ),
                 ),
                 IconButton(
+                  icon: const Icon(Icons.delete_sweep),
+                  tooltip: '목록 비우기',
+                  onPressed: () {
+                    ref.read(eventsProvider.notifier).clearDisplayedEvents();
+                  },
+                ),
+                IconButton(
                   icon: const Icon(Icons.refresh),
                   tooltip: '새로고침',
                   onPressed: () {

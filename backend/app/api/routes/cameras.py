@@ -4,10 +4,11 @@ Camera REST API routes.
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.db.models import Camera
+from app.db.models import Camera, Checklist
 from app.schemas.camera import CameraCreate, CameraUpdate, CameraResponse
 
 router = APIRouter(prefix="/cameras", tags=["cameras"])
@@ -95,8 +96,15 @@ async def delete_camera(
     camera_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete a camera."""
-    result = await db.execute(select(Camera).where(Camera.id == camera_id))
+    """Delete a camera and all related data."""
+    # Eager load relationships to avoid async lazy loading failure
+    result = await db.execute(
+        select(Camera).where(Camera.id == camera_id).options(
+            selectinload(Camera.rois),
+            selectinload(Camera.events),
+            selectinload(Camera.checklists).selectinload(Checklist.items)
+        )
+    )
     camera = result.scalar_one_or_none()
 
     if not camera:

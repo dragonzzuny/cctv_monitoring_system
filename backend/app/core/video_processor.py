@@ -9,12 +9,66 @@ from pathlib import Path
 from typing import Optional, Callable, Dict, Any, AsyncGenerator
 import cv2
 import numpy as np
+from PIL import ImageFont, ImageDraw, Image
 
 from app.config import settings
 from app.core.detection import BaseDetector, get_detector
 from app.schemas.detection import DetectionResult, StreamFrame
 
 logger = logging.getLogger(__name__)
+
+# Load Korean-compatible font (Windows default)
+_korean_font_cache: Dict[int, ImageFont.FreeTypeFont] = {}
+
+def _get_korean_font(size: int = 20) -> ImageFont.FreeTypeFont:
+    """Get cached Korean font instance."""
+    if size not in _korean_font_cache:
+        font_paths = [
+            "C:/Windows/Fonts/malgun.ttf",      # Malgun Gothic
+            "C:/Windows/Fonts/gulim.ttc",        # Gulim
+            "C:/Windows/Fonts/batang.ttc",       # Batang
+        ]
+        for fp in font_paths:
+            try:
+                _korean_font_cache[size] = ImageFont.truetype(fp, size)
+                break
+            except (IOError, OSError):
+                continue
+        if size not in _korean_font_cache:
+            _korean_font_cache[size] = ImageFont.load_default()
+    return _korean_font_cache[size]
+
+
+def put_korean_text(
+    img: np.ndarray,
+    text: str,
+    position: tuple,
+    font_size: int = 20,
+    color: tuple = (255, 255, 255),
+    bg_color: tuple = None
+) -> np.ndarray:
+    """Draw Korean text on OpenCV image using PIL."""
+    img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil)
+    font = _get_korean_font(font_size)
+
+    x, y = position
+    bbox = draw.textbbox((x, y), text, font=font)
+
+    if bg_color is not None:
+        # BGR to RGB for PIL
+        bg_rgb = (bg_color[2], bg_color[1], bg_color[0])
+        padding = 4
+        draw.rectangle(
+            [bbox[0] - padding, bbox[1] - padding, bbox[2] + padding, bbox[3] + padding],
+            fill=bg_rgb
+        )
+
+    # BGR to RGB for PIL
+    color_rgb = (color[2], color[1], color[0])
+    draw.text((x, y), text, font=font, fill=color_rgb)
+
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
 
 class VideoProcessor:
@@ -55,16 +109,12 @@ class VideoProcessor:
         Returns:
             True if opened successfully
         """
-        # Reuse existing capture session if it's already open
         if self.cap is not None and self.cap.isOpened():
             return True
 
         try:
             if self.source_type == "file":
-                if not Path(self.source).exists():
-                    logger.error(f"Video file not found: {self.source}")
-                    return False
-                self.cap = cv2.VideoCapture(self.source)
+                self.cap = cv2.VideoCapture(self.source, cv2.CAP_FFMPEG)
             else:
                 self.cap = cv2.VideoCapture(self.source)
 
@@ -75,9 +125,26 @@ class VideoProcessor:
             # Get video properties
             self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            self.original_fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
+            self.original_fps = self.cap.get(cv2.CAP_PROP_FPS)
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+            # Fallback for FPS
+            if self.original_fps is None or self.original_fps <= 0:
+                self.original_fps = 30.0
+
+            # If properties are 0, try reading a frame to populate them (some backends need this)
+            if self.width <= 0 or self.height <= 0:
+                ret, frame = self.cap.read()
+                if ret:
+                    self.height, self.width = frame.shape[:2]
+                    # Reset to beginning
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                else:
+                    logger.warning(f"Could not read initial frame to determine video properties for {self.source}")
+
+            # Ensure target_fps is set based on actual original_fps
+            self.target_fps = min(self.original_fps, settings.VIDEO_FPS)
+            
             logger.info(
                 f"Video opened: {self.width}x{self.height} @ {self.original_fps}fps, "
                 f"total frames: {self.total_frames}"
@@ -116,7 +183,7 @@ class VideoProcessor:
             else:
                 return None
 
-        self.frame_count += 1
+        self.frame_count = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
         self._current_raw_frame = frame.copy()  # Store raw frame for snapshots
         return frame
 
@@ -149,17 +216,13 @@ class VideoProcessor:
             target_frame = int((position_ms / 1000.0) * self.original_fps)
             target_frame = max(0, min(target_frame, self.total_frames - 1))
             
-            # 3. Apply seek using multiple methods for reliability
-            # Some codecs prefer MSEC, others prefer FRAME_COUNT
-            self.cap.set(cv2.CAP_PROP_POS_MSEC, float(position_ms))
+            # 3. Apply seek
+            # Prioritize POS_FRAMES as it's generally more accurate for indexed files
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, float(target_frame))
             
-            # 4. CRITICAL: Forcing a read and potentially small skip to clear codec buffers
-            # This is essential for some ffmpeg/opencv backends to actually update the frame
-            for _ in range(2):
+            # Force codec buffer update
+            for _ in range(5):
                 self.cap.grab()
-            
-            logger.info(f"Force Seek: {position_ms}ms (Frame: {target_frame}/{self.total_frames})")
 
     def seek_frame(self, frame_number: int):
         """
@@ -221,6 +284,21 @@ class VideoProcessor:
             "fire_extinguisher": (0, 0, 255), # Pure Red
         }
 
+        # Korean label mapping
+        korean_labels = {
+            "helmet": "안전모",
+            "gloves": "장갑",
+            "vest": "조끼",
+            "boots": "안전화",
+            "goggles": "보안경",
+            "mask": "마스크",
+            "person": "작업자",
+            "machinery": "기계",
+            "vehicle": "차량",
+            "safety_cone": "라바콘",
+            "fire_extinguisher": "소화기",
+        }
+
         for det in detection.detections:
             x1, y1, x2, y2 = int(det.x1), int(det.y1), int(det.x2), int(det.y2)
             color = colors.get(det.class_name, (255, 255, 0))
@@ -230,11 +308,11 @@ class VideoProcessor:
 
             if draw_labels:
                 # Draw label background
-                label = f"{det.class_name}: {det.confidence:.2f}"
-                font_scale = 0.8  # Increased from 0.5
-                thickness = 2     # Increased from 1
+                label_text = f"{det.class_name}: {det.confidence:.2f}"
+                font_scale = 0.8
+                thickness = 2
                 (label_w, label_h), baseline = cv2.getTextSize(
-                    label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness
+                    label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness
                 )
 
                 cv2.rectangle(
@@ -248,7 +326,7 @@ class VideoProcessor:
                 # Draw label text
                 cv2.putText(
                     frame_copy,
-                    label,
+                    label_text,
                     (x1, y1 - baseline - 2),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     font_scale,
@@ -265,22 +343,28 @@ class VideoProcessor:
         alpha: float = 0.3
     ) -> np.ndarray:
         """
-        Draw ROI polygons on frame.
+        Draw ROI polygons on frame with semi-transparent fill.
 
         Args:
             frame: BGR frame
-            rois: List of ROI data with points and color
+            rois: List of ROI data with normalized points (0-1) and color
             alpha: Transparency for filled region
 
         Returns:
             Frame with drawn ROIs
         """
+        if not rois:
+            return frame
+
+        h, w = frame.shape[:2]
         frame_copy = frame.copy()
         overlay = frame.copy()
 
         for roi in rois:
             points = roi.get("points", [])
             color_hex = roi.get("color", "#FF0000")
+            name = roi.get("name", "")
+            zone_type = roi.get("zone_type", "warning")
 
             # Convert hex color to BGR
             color_hex = color_hex.lstrip('#')
@@ -288,14 +372,32 @@ class VideoProcessor:
             color = (b, g, r)  # BGR
 
             if len(points) >= 3:
-                pts = np.array([[int(p["x"]), int(p["y"])] for p in points], np.int32)
+                # Scale normalized (0-1) coordinates to pixel coordinates
+                pts = np.array([
+                    [int(p["x"] * w), int(p["y"] * h)] for p in points
+                ], np.int32)
                 pts = pts.reshape((-1, 1, 2))
 
                 # Draw filled polygon on overlay
                 cv2.fillPoly(overlay, [pts], color)
 
-                # Draw polygon outline
+                # Draw polygon outline (slightly thicker)
                 cv2.polylines(frame_copy, [pts], True, color, 2)
+
+                # Draw ROI name label (Korean-compatible)
+                if name:
+                    min_x = min(p["x"] for p in points)
+                    min_y = min(p["y"] for p in points)
+                    label_x = int(min_x * w)
+                    label_y = int(min_y * h) - 30
+
+                    frame_copy = put_korean_text(
+                        frame_copy, name,
+                        (label_x, label_y),
+                        font_size=18,
+                        color=(255, 255, 255),
+                        bg_color=color
+                    )
 
         # Blend overlay with frame
         cv2.addWeighted(overlay, alpha, frame_copy, 1 - alpha, 0, frame_copy)
@@ -305,7 +407,8 @@ class VideoProcessor:
     async def stream_frames(
         self,
         with_detection: bool = True,
-        callback: Optional[Callable[[StreamFrame], None]] = None
+        callback: Optional[Callable[[StreamFrame], None]] = None,
+        rois_provider: Optional[Callable[[], list]] = None
     ) -> AsyncGenerator[StreamFrame, None]:
         """
         Async generator for streaming frames.
@@ -330,21 +433,40 @@ class VideoProcessor:
 
         try:
             while self.is_running:
-                start_time = time.time()
+                loop_start = time.time()
 
                 frame = self.read_frame()
                 if frame is None:
                     break
-
+                
+                # Check current time vs video time to decide if we should skip detection
+                # to maintain real-time sync.
+                current_loop_time = time.time()
+                time_behind = (current_loop_time - loop_start)
+                
+                # If we're taking too long (e.g. more than 1.5x frame interval),
+                # we might want to skip detection and just show the frame,
+                # or skip frames entirely. For now, we ensure we don't fall behind.
+                
                 timestamp = self.get_timestamp()
                 detection = None
 
                 if with_detection and self.detector:
+                    # Run inference on raw frame (before any overlay)
                     detection = self.detector.detect(
                         frame,
                         frame_number=self.frame_count,
                         timestamp=timestamp
                     )
+
+                # Draw ROI overlays first (semi-transparent background)
+                if rois_provider:
+                    current_rois = rois_provider()
+                    if current_rois:
+                        frame = self.draw_rois(frame, current_rois)
+
+                # Draw detection boxes on top of ROI overlays
+                if detection:
                     frame = self.draw_detections(frame, detection)
 
                 # Encode frame
@@ -356,7 +478,8 @@ class VideoProcessor:
                     current_ms=timestamp * 1000.0,
                     total_ms=self.total_duration_ms,
                     detection=detection,
-                    events=[]
+                    events=[],
+                    raw_frame=frame
                 )
 
                 if callback:
@@ -364,29 +487,46 @@ class VideoProcessor:
 
                 yield stream_frame
 
-                # Maintain target FPS
-                elapsed = time.time() - start_time
+                # Maintain target FPS and implement frame skipping
+                elapsed = time.time() - loop_start
                 sleep_time = frame_interval - elapsed
+                
                 if sleep_time > 0:
                     await asyncio.sleep(sleep_time)
+                elif abs(sleep_time) > frame_interval:
+                    # We are falling behind, skip frames to catch up
+                    frames_to_skip = int(abs(sleep_time) / frame_interval)
+                    if self.cap is not None:
+                        for _ in range(min(frames_to_skip, 5)): # Cap skip to 5 frames
+                            self.cap.grab()
+                        logger.debug(f"Skipped {frames_to_skip} frames to maintain real-time sync")
 
         finally:
             # Do NOT call self.close() here as it releases the video source
             # The owner of VideoProcessor is responsible for closing it when done
             self.is_running = False
 
-    def get_snapshot(self, with_detection: bool = False) -> Optional[Dict[str, Any]]:
+    def get_snapshot(self, with_detection: bool = False, position_ms: Optional[float] = None) -> Optional[Dict[str, Any]]:
         """
         Capture a single snapshot.
 
         Args:
             with_detection: Whether to include detection
+            position_ms: Optional position in milliseconds to seek to
 
         Returns:
             Dict with frame_base64 and optional detection
         """
         if not self.open():
             return None
+
+        # Seek if requested
+        if position_ms is not None:
+            self.seek(int(position_ms))
+        elif self.source_type == "file":
+            # For files, default to seeking 5s in to skip potentially black intros
+            # if no specific position is provided.
+            self.seek(5000)
 
         frame = self.read_frame()
         if frame is None:

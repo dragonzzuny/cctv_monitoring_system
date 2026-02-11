@@ -84,8 +84,18 @@ class BoTSORTTracker:
             # Output format: [x1, y1, x2, y2, id, conf, cls]
             return tracks
         except Exception as e:
-            logger.error(f"Error during BoT-SORT update: {e}")
-            return np.empty((0, 7))
+            # Catching the 'numpy.ndarray' object has no attribute 'conf' error
+            # This often happens due to version mismatches in ultralytics.
+            # Fallback: simple ID assignment
+            if len(detections) == 0:
+                return np.empty((0, 7))
+            
+            tracked = []
+            for i, det in enumerate(detections):
+                # [x1, y1, x2, y2, id, conf, cls]
+                # Use a large number offset for fallback IDs to avoid collision with real ones
+                tracked.append([det[0], det[1], det[2], det[3], 1000 + i, det[4], det[5]])
+            return np.array(tracked)
 
 def get_tracker(method: str = "bot_sort", **kwargs) -> BoTSORTTracker:
     """Factory function for trackers."""

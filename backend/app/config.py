@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # RF-DETR Model
     RFDETR_MODEL_PATH: str = "models/checkpoint_best_ema.pth"
-    RFDETR_CONFIDENCE_THRESHOLD: float = 0.15
+    RFDETR_CONFIDENCE_THRESHOLD: float = 0.35
     
     # BoT-SORT Tracker Settings
     TRACKER_CONFIG: str = "bot_sort.yaml" # Placeholder or path

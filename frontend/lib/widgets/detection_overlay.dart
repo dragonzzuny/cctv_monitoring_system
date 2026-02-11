@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 
-/// Detection info overlay showing counts
+/// Detection info overlay showing summary counts
 class DetectionInfoOverlay extends StatelessWidget {
   final DetectionResult detection;
   final Map<String, dynamic> roiMetrics;
@@ -37,12 +37,14 @@ class DetectionInfoOverlay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildRow(Icons.person, '사람', detection.personsCount),
+          _buildRow(Icons.person, '작업자', detection.personsCount),
           _buildRow(Icons.construction, '안전모', detection.helmetsCount),
-          _buildRow(Icons.warning, '경고구역 침입', warningCount, 
-                    color: warningCount > 0 ? Colors.yellow : Colors.white70),
-          _buildRow(Icons.dangerous, '위험구역 침입', dangerCount, 
-                    color: dangerCount > 0 ? Colors.red : Colors.white70),
+          if (warningCount > 0 || dangerCount > 0) ...[
+            _buildRow(Icons.warning, '경고구역', warningCount,
+                color: warningCount > 0 ? Colors.yellow : Colors.white70),
+            _buildRow(Icons.dangerous, '위험구역', dangerCount,
+                color: dangerCount > 0 ? Colors.red : Colors.white70),
+          ],
         ],
       ),
     );
@@ -72,8 +74,7 @@ class DetectionInfoOverlay extends StatelessWidget {
   }
 
   Color _getCountColor(String label, int count) {
-    // For PPE, green if count >= persons, otherwise yellow/red
-    if (label == '안전모' || label == '마스크') {
+    if (label == '안전모') {
       if (detection.personsCount > 0 && count >= detection.personsCount) {
         return Colors.green;
       } else if (detection.personsCount > 0 && count > 0) {
@@ -82,21 +83,11 @@ class DetectionInfoOverlay extends StatelessWidget {
         return Colors.red;
       }
     }
-
-    // For fire extinguisher, green if present, red if person present but no extinguisher
-    if (label == '소화기') {
-      if (count > 0) {
-        return Colors.green;
-      } else if (detection.personsCount > 0) {
-        return Colors.orange;
-      }
-    }
-
     return Colors.white;
   }
 }
 
-/// Full detection overlay with bounding boxes (for future use)
+/// Full detection overlay with bounding boxes
 class DetectionBoxOverlay extends StatelessWidget {
   final List<DetectionBox> detections;
   final Size imageSize;
@@ -155,51 +146,33 @@ class DetectionBoxPainter extends CustomPainter {
 
       canvas.drawRect(rect, paint);
 
-      // Draw label
       final textPainter = TextPainter(
         text: TextSpan(
           text: '${det.className} ${(det.confidence * 100).toStringAsFixed(0)}%',
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
         ),
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
 
-      // Background for label
       final labelRect = Rect.fromLTWH(
         det.x1 * scaleX,
         det.y1 * scaleY - textPainter.height - 2,
         textPainter.width + 4,
         textPainter.height + 2,
       );
-      canvas.drawRect(
-        labelRect,
-        Paint()..color = color.withOpacity(0.8),
-      );
-
-      textPainter.paint(
-        canvas,
-        Offset(det.x1 * scaleX + 2, det.y1 * scaleY - textPainter.height - 1),
-      );
+      canvas.drawRect(labelRect, Paint()..color = color.withOpacity(0.8));
+      textPainter.paint(canvas, Offset(det.x1 * scaleX + 2, det.y1 * scaleY - textPainter.height - 1));
     }
   }
 
   Color _getClassColor(String className) {
     switch (className.toLowerCase()) {
-      case 'person':
-        return Colors.green;
-      case 'helmet':
-        return Colors.orange;
-      case 'mask':
-        return Colors.purple;
-      case 'fire_extinguisher':
-        return Colors.red;
-      default:
-        return Colors.blue;
+      case 'person': return Colors.green;
+      case 'helmet': return Colors.orange;
+      case 'mask': return Colors.purple;
+      case 'fire_extinguisher': return Colors.red;
+      default: return Colors.blue;
     }
   }
 

@@ -52,18 +52,32 @@ class StreamNotifier extends StateNotifier<StreamState> {
 
   Future<void> connect(int cameraId) async {
     try {
-      // Clean up previous connection before reconnecting
       _subscription?.cancel();
       _subscription = null;
       await _ws.disconnectStream();
+      
+      // Give socket time to close and backend to cleanup
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      state = state.copyWith(error: null);
+      // Full reset: clear old frame, playing state, errors
+      state = StreamState();
+
       final stream = await _ws.connectToStream(cameraId);
 
       _subscription = stream.listen(
         (frame) {
+          // Handle synthetic frame (metadata update only)
+          if (frame.frameBase64.isEmpty) {
+            state = state.copyWith(
+              totalDuration: frame.totalMs > 0 ? frame.totalMs : state.totalDuration,
+              isConnected: true,
+            );
+            return;
+          }
+
           state = state.copyWith(
             isConnected: true,
+            isPlaying: true,
             currentFrame: frame,
             currentPosition: frame.currentMs,
             totalDuration: frame.totalMs > 0 ? frame.totalMs : state.totalDuration,
@@ -76,7 +90,6 @@ class StreamNotifier extends StateNotifier<StreamState> {
                 final event = SafetyEvent.fromJson(eventData);
                 _ref.read(eventsProvider.notifier).addEvent(event);
 
-                // Show alarm popup for warning/critical
                 if (event.severity != 'INFO') {
                   _ref.read(activeAlarmProvider.notifier).showAlarm(event);
                 }
@@ -102,6 +115,9 @@ class StreamNotifier extends StateNotifier<StreamState> {
       );
 
       state = state.copyWith(isConnected: true);
+
+      // Auto-start streaming after connection
+      startStream();
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
@@ -126,7 +142,13 @@ class StreamNotifier extends StateNotifier<StreamState> {
   }
 
   void seek(int positionMs) {
+    // If totalDuration isn't set yet, pull from WS metadata cache
+    if (state.totalDuration <= 0 && _ws.lastTotalDurationMs > 0) {
+      state = state.copyWith(totalDuration: _ws.lastTotalDurationMs);
+    }
     _ws.seekStream(positionMs);
+    // Immediately update position so slider doesn't snap back
+    state = state.copyWith(currentPosition: positionMs.toDouble());
   }
 
   void reloadRois() {

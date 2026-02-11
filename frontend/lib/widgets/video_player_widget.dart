@@ -23,7 +23,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
-    _connectToCamera();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _connectToCamera();
+    });
   }
 
   void _connectToCamera() {
@@ -300,16 +302,32 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   double _calculateProgress(StreamState state) {
-    if (state.totalDuration <= 0) return 0.0;
-    final progress = state.currentPosition / state.totalDuration;
+    double duration = state.totalDuration;
+    if (duration <= 0) {
+      duration = ref.read(webSocketServiceProvider).lastTotalDurationMs;
+    }
+    
+    if (duration <= 0) return 0.0;
+    final progress = state.currentPosition / duration;
     return progress.clamp(0.0, 1.0);
   }
 
   void _handleSeek(double value) {
     final streamState = ref.read(streamProvider);
-    if (streamState.totalDuration > 0) {
-      final targetMs = (value * streamState.totalDuration).toInt();
+    double duration = streamState.totalDuration;
+
+    // Fallback: get cached duration from WebSocket metadata
+    if (duration <= 0) {
+      duration = ref.read(webSocketServiceProvider).lastTotalDurationMs;
+    }
+
+    if (duration > 0) {
+      final targetMs = (value * duration).toInt();
       ref.read(streamProvider.notifier).seek(targetMs);
+      // Update frame bytes to null so old frame doesn't linger
+      setState(() {
+        _currentFrameBytes = null;
+      });
     }
   }
 

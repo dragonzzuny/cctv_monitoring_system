@@ -14,7 +14,7 @@ from app.db.models import Camera, ROI
 from app.core.video_processor import VideoProcessor
 from app.core.detection import get_detector
 from app.core.roi_manager import get_roi_manager, ROIManager
-from app.core.rule_engine import RuleEngine, create_rule_engine
+from app.core.rule_engine import RuleEngine, create_rule_engine, Severity, EventType
 from app.core.alarm_manager import get_alarm_manager
 from app.schemas.roi import Point
 
@@ -188,6 +188,14 @@ async def websocket_stream(websocket: WebSocket, camera_id: int):
                 command = json.loads(data)
 
                 if command.get("action") == "start":
+                    if not processor.open():
+                        logger.error(f"Failed to open processor for camera {camera_id}")
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": f"Failed to open video source for camera {camera_id}"
+                        }))
+                        continue
+
                     streaming = True
                     logger.info(f"Starting stream for camera {camera_id}")
                     
@@ -212,6 +220,27 @@ async def websocket_stream(websocket: WebSocket, camera_id: int):
                     position_ms = command.get("position_ms", 0)
                     processor.seek(position_ms)
 
+                    # Send preview frame when paused
+                    if not streaming and processor.cap is not None:
+                        frame = processor.read_frame()
+                        if frame is not None:
+                            rois_data = roi_manager.get_all_rois()
+                            if rois_data:
+                                frame = VideoProcessor.draw_rois(frame, rois_data)
+                            frame_base64 = processor.encode_frame(frame)
+                            preview = {
+                                "type": "frame",
+                                "camera_id": camera_id,
+                                "frame": frame_base64,
+                                "current_ms": processor.get_timestamp() * 1000.0,
+                                "total_ms": processor.total_duration_ms,
+                                "detection": None,
+                                "events": [],
+                                "rois": rois_data,
+                                "roi_metrics": {}
+                            }
+                            await websocket.send_text(json.dumps(preview))
+
                 elif command.get("action") == "reload_rois":
                     roi_manager.clear_rois()
                     active_roi_ids = await load_camera_rois(camera_id, roi_manager)
@@ -221,7 +250,7 @@ async def websocket_stream(websocket: WebSocket, camera_id: int):
 
             if streaming:
                 # Stream frames
-                async for stream_frame in processor.stream_frames(with_detection=True):
+                async for stream_frame in processor.stream_frames(with_detection=True, rois_provider=roi_manager.get_all_rois):
                     if not streaming:
                         break
 
@@ -230,20 +259,22 @@ async def websocket_stream(websocket: WebSocket, camera_id: int):
                         events = rule_engine.evaluate(
                             stream_frame.detection,
                             camera_id,
-                            active_roi_ids
+                            active_roi_ids,
+                            canvas_width=processor.width,
+                            canvas_height=processor.height
                         )
 
                         # Process events with frame for snapshots
                         if events:
-                            raw_frame = processor.get_current_frame()
                             async with AsyncSessionLocal() as db_session:
                                 for event in events:
                                     event.camera_id = camera_id
+                                    # Always save to DB to ensure timeline visibility
+                                    # Pass the event object directly as required by alarm_manager.process_event
                                     event_data = await alarm_manager.process_event(
                                         event,
-                                        frame=raw_frame,
-                                        db_session=db_session,
-                                        position_ms=stream_frame.current_ms
+                                        frame=stream_frame.raw_frame if event.severity != Severity.INFO else None,
+                                        db_session=db_session
                                     )
                                     stream_frame.events.append(event_data)
 
@@ -254,7 +285,13 @@ async def websocket_stream(websocket: WebSocket, camera_id: int):
                     rois_data = roi_manager.get_all_rois()
                     
                     # Add real-time metrics (counts and stay times)
-                    roi_metrics = rule_engine.get_roi_metrics(active_roi_ids)
+                    persons = [d for d in stream_frame.detection.detections if d.class_name == "person"] if stream_frame.detection else []
+                    roi_metrics = rule_engine.get_roi_metrics(
+                        active_roi_ids, 
+                        persons=persons,
+                        canvas_width=processor.width,
+                        canvas_height=processor.height
+                    )
 
                     # Send frame
                     frame_data = {

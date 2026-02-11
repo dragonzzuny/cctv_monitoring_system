@@ -18,6 +18,7 @@ router = APIRouter(prefix="/stream", tags=["stream"])
 async def get_snapshot(
     camera_id: int,
     with_detection: bool = False,
+    position_ms: Optional[float] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -25,6 +26,7 @@ async def get_snapshot(
 
     - **camera_id**: Camera ID
     - **with_detection**: Include YOLO detection results
+    - **position_ms**: Position in video file to seek to
     """
     result = await db.execute(select(Camera).where(Camera.id == camera_id))
     camera = result.scalar_one_or_none()
@@ -41,7 +43,7 @@ async def get_snapshot(
         source_type=camera.source_type
     )
 
-    snapshot = processor.get_snapshot(with_detection=with_detection)
+    snapshot = processor.get_snapshot(with_detection=with_detection, position_ms=position_ms)
 
     if not snapshot:
         raise HTTPException(

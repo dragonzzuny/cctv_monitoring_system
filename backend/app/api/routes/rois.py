@@ -45,7 +45,8 @@ async def create_roi(
         camera_id=roi.camera_id,
         name=roi.name,
         points=points_to_json(roi.points),
-        color=roi.color
+        color=roi.color,
+        zone_type=roi.zone_type
     )
     db.add(db_roi)
     await db.commit()
@@ -55,13 +56,13 @@ async def create_roi(
     roi_manager = get_roi_manager()
     roi_manager.add_roi(db_roi.id, roi.points, roi.name, roi.color)
 
-    # Convert response
     response = ROIResponse(
         id=db_roi.id,
         camera_id=db_roi.camera_id,
         name=db_roi.name,
         points=roi.points,
         color=db_roi.color,
+        zone_type=db_roi.zone_type or "warning",
         is_active=db_roi.is_active,
         created_at=db_roi.created_at,
         updated_at=db_roi.updated_at
@@ -93,6 +94,7 @@ async def get_rois(
             name=roi.name,
             points=json_to_points(roi.points),
             color=roi.color,
+            zone_type=roi.zone_type or "warning",
             is_active=roi.is_active,
             created_at=roi.created_at,
             updated_at=roi.updated_at
@@ -160,7 +162,7 @@ async def update_roi(
     roi_manager = get_roi_manager()
     if roi.is_active:
         points = json_to_points(roi.points)
-        roi_manager.add_roi(roi.id, points, roi.name, roi.color)
+        roi_manager.add_roi(roi.id, points, roi.name, roi.color, zone_type=roi.zone_type or "warning")
     else:
         roi_manager.remove_roi(roi.id)
 
@@ -170,6 +172,7 @@ async def update_roi(
         name=roi.name,
         points=json_to_points(roi.points),
         color=roi.color,
+        zone_type=roi.zone_type or "warning",
         is_active=roi.is_active,
         created_at=roi.created_at,
         updated_at=roi.updated_at

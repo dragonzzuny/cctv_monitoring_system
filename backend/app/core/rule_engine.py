@@ -23,6 +23,8 @@ class EventType(str, Enum):
     FIRE_EXTINGUISHER_MISSING = "FIRE_EXTINGUISHER_MISSING"
     WARNING_ZONE_INTRUSION = "WARNING_ZONE_INTRUSION"
     DANGER_ZONE_INTRUSION = "DANGER_ZONE_INTRUSION"
+    PERSON_ENTRANCE = "PERSON_ENTRANCE"
+    PERSON_EXIT = "PERSON_EXIT"
 
 
 class Severity(str, Enum):
@@ -181,7 +183,9 @@ class RuleEngine:
         self,
         detection: DetectionResult,
         camera_id: int,
-        active_roi_ids: Optional[List[int]] = None
+        active_roi_ids: Optional[List[int]] = None,
+        canvas_width: float = 0.0,
+        canvas_height: float = 0.0
     ) -> List[SafetyEvent]:
         """
         Evaluate detection result against safety rules.
@@ -190,12 +194,14 @@ class RuleEngine:
             detection: Detection result from YOLO
             camera_id: Camera ID
             active_roi_ids: List of active ROI IDs to check
+            canvas_width: Actual video width
+            canvas_height: Actual video height
 
         Returns:
             List of safety events (only new events after persistence/cooldown)
         """
         events: List[SafetyEvent] = []
-        current_time = time.time()
+        current_time = detection.timestamp if detection.timestamp is not None else time.time()
 
         # Get detections by class
         persons = [d for d in detection.detections if d.class_name == "person"]
@@ -213,7 +219,9 @@ class RuleEngine:
                     helmets=helmets,
                     masks=masks,
                     extinguishers=extinguishers,
-                    current_time=current_time
+                    current_time=current_time,
+                    canvas_width=canvas_width,
+                    canvas_height=canvas_height
                 )
                 events.extend(roi_events)
 
@@ -227,19 +235,22 @@ class RuleEngine:
         helmets: List[DetectionBox],
         masks: List[DetectionBox],
         extinguishers: List[DetectionBox],
-        current_time: float
+        current_time: float,
+        canvas_width: float = 0.0,
+        canvas_height: float = 0.0
     ) -> List[SafetyEvent]:
         """Evaluate rules for a single ROI."""
         events: List[SafetyEvent] = []
         
         # Get ROI info
         roi_data = self.roi_manager.get_roi(roi_id)
+        roi_name = roi_data.get("name", f"#{roi_id}") if roi_data else f"#{roi_id}"
         zone_type = roi_data.get("zone_type", "warning") if roi_data else "warning"
 
         # Find persons in this ROI
         persons_in_roi = [
             p for p in persons
-            if self.roi_manager.is_detection_in_roi(roi_id, p)
+            if self.roi_manager.is_detection_in_roi(roi_id, p, canvas_width, canvas_height)
         ]
         
         # Update individual person stay times
@@ -258,7 +269,30 @@ class RuleEngine:
                     state.last_detected = current_time
                     state.stay_time = current_time - state.first_detected
 
-        # Rule 1: ROI Intrusion (Warning or Danger)
+        # Rule 0: Track-based Entrance/Exit Events
+        current_track_ids = {p.track_id for p in persons_in_roi if p.track_id is not None}
+        
+        # 0.1: Check for Entrances
+        for person in persons_in_roi:
+            if person.track_id is not None:
+                key = (roi_id, person.track_id)
+                entrance_key = self._get_state_key("PERSON_ENTRANCE", roi_id, track_id=person.track_id)
+                ent_state = self._states[entrance_key]
+                
+                # If we just created the person state or it's a new entrance
+                if not ent_state.event_fired:
+                     ent_state.event_fired = True
+                     ent_state.last_event_time = current_time
+                     events.append(SafetyEvent(
+                         event_type=EventType.PERSON_ENTRANCE,
+                         severity=Severity.INFO,
+                         message=f"ID {person.track_id} 작업자 입장 ({roi_name})",
+                         roi_id=roi_id,
+                         camera_id=camera_id,
+                         detection_data={"track_id": person.track_id, "action": "entrance"}
+                     ))
+
+        # 0.2: Check for Exits (handled in the cleanup loop below)
         event_type = EventType.DANGER_ZONE_INTRUSION if zone_type == "danger" else EventType.WARNING_ZONE_INTRUSION
         severity = Severity.CRITICAL if zone_type == "danger" else Severity.WARNING
         
@@ -275,7 +309,7 @@ class RuleEngine:
                 events.append(SafetyEvent(
                     event_type=event_type,
                     severity=severity,
-                    message=f"{msg_prefix} 영역 작업자 감지 (ROI #{roi_id}, 인원: {len(persons_in_roi)}명)",
+                    message=f"{msg_prefix} 영역 작업자 감지 ({roi_name}, 인원: {len(persons_in_roi)}명)",
                     roi_id=roi_id,
                     camera_id=camera_id,
                     detection_data={
@@ -288,15 +322,37 @@ class RuleEngine:
         else:
             intrusion_state.event_fired = False
 
-        # Cleanup person states for people who left the ROI
-        current_track_ids = {p.track_id for p in persons_in_roi if p.track_id is not None}
+        # Cleanup person states and fire EXIT events
         keys_to_remove = []
         for key, state in self._person_states.items():
             if key[0] == roi_id and key[1] not in current_track_ids:
-                # If person was not seen for more than 5 seconds, remove state
-                if current_time - state.last_detected > 5.0:
+                # Fire EXIT event before removing
+                exit_key = self._get_state_key("PERSON_EXIT", roi_id, track_id=state.track_id)
+                ex_state = self._states[exit_key]
+                ent_key = self._get_state_key("PERSON_ENTRANCE", roi_id, track_id=state.track_id)
+                ent_state = self._states[ent_key]
+
+                if not ex_state.event_fired and ent_state.event_fired:
+                    ex_state.event_fired = True
+                    events.append(SafetyEvent(
+                        event_type=EventType.PERSON_EXIT,
+                        severity=Severity.INFO,
+                        message=f"ID {state.track_id} 작업자 퇴장 ({roi_name}, 체류시간: {round(state.stay_time, 1)}초)",
+                        roi_id=roi_id,
+                        camera_id=camera_id,
+                        detection_data={"track_id": state.track_id, "action": "exit", "stay_time": state.stay_time}
+                    ))
+                    # Reset entrance state so they can re-enter
+                    ent_state.event_fired = False
+
+                # If person was not seen for more than 2 seconds, remove state
+                if current_time - state.last_detected > 2.0:
                     keys_to_remove.append(key)
         for key in keys_to_remove:
+            # Also clear the specific exit state so it can fire again later
+            exit_key = self._get_state_key("PERSON_EXIT", key[0], track_id=key[1])
+            if exit_key in self._states:
+                del self._states[exit_key]
             del self._person_states[key]
 
         # Only check PPE if person is in ROI
@@ -317,7 +373,7 @@ class RuleEngine:
                 events.append(SafetyEvent(
                     event_type=EventType.PPE_HELMET_MISSING,
                     severity=Severity.WARNING,
-                    message=f"안전모 미착용 감지 (ROI #{roi_id})",
+                    message=f"안전모 미착용 감지 ({roi_name})",
                     roi_id=roi_id,
                     camera_id=camera_id,
                     detection_data={"persons_count": len(persons_in_roi)}
@@ -325,26 +381,12 @@ class RuleEngine:
         else:
             helmet_state.event_fired = False
 
-        # Rule 3: Mask Missing
-        mask_key = self._get_state_key(EventType.PPE_MASK_MISSING.value, roi_id)
-        mask_state = self._states[mask_key]
+        # Rule 3: Mask Missing - disabled (helmet only)
+        # mask_key = self._get_state_key(EventType.PPE_MASK_MISSING.value, roi_id)
+        # mask_state = self._states[mask_key]
+        # mask_missing = not self._has_ppe_near_persons(persons_in_roi, masks)
+        # ...
 
-        mask_missing = not self._has_ppe_near_persons(persons_in_roi, masks)
-
-        if self._check_persistence(mask_state, current_time, mask_missing):
-            if not mask_state.event_fired and self._check_cooldown(mask_state, current_time):
-                mask_state.event_fired = True
-                mask_state.last_event_time = current_time
-                events.append(SafetyEvent(
-                    event_type=EventType.PPE_MASK_MISSING,
-                    severity=Severity.WARNING,
-                    message=f"마스크 미착용 감지 (ROI #{roi_id})",
-                    roi_id=roi_id,
-                    camera_id=camera_id,
-                    detection_data={"persons_count": len(persons_in_roi)}
-                ))
-        else:
-            mask_state.event_fired = False
 
         # Rule 4: Fire Extinguisher Missing (only if ROI requires it)
         if roi_id in self._roi_requires_extinguisher:
@@ -365,7 +407,7 @@ class RuleEngine:
                     events.append(SafetyEvent(
                         event_type=EventType.FIRE_EXTINGUISHER_MISSING,
                         severity=Severity.WARNING,
-                        message=f"소화기 미비치 감지 (ROI #{roi_id})",
+                        message=f"소화기 미비치 감지 ({roi_name})",
                         roi_id=roi_id,
                         camera_id=camera_id,
                         detection_data={"has_person": True}
@@ -422,10 +464,22 @@ class RuleEngine:
         else:
             self._states.clear()
 
-    def get_roi_metrics(self, active_roi_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+    def get_roi_metrics(
+        self,
+        active_roi_ids: List[int],
+        persons: List[DetectionBox] = None,
+        canvas_width: float = 0.0,
+        canvas_height: float = 0.0
+    ) -> Dict[int, Dict[str, Any]]:
         """
         Get real-time metrics for each active ROI.
         
+        Args:
+            active_roi_ids: List of active ROI IDs
+            persons: Current person detections (optional, for real-time count)
+            canvas_width: video width
+            canvas_height: video height
+
         Returns:
             Dict mapping roi_id to its metrics (count, stay_times).
         """
@@ -434,19 +488,28 @@ class RuleEngine:
             roi_data = self.roi_manager.get_roi(roi_id)
             zone_type = roi_data.get("zone_type", "warning") if roi_data else "warning"
             
-            # Find people currently in this ROI
-            # Note: Using _person_states which is updated during evaluate()
-            persons_in_roi = [state for key, state in self._person_states.items() 
-                              if key[0] == roi_id]
+            # Find people currently in this ROI via person_states (tracked)
+            tracked_persons = [state for key, state in self._person_states.items() 
+                               if key[0] == roi_id]
             
+            # For count, prioritize current frame detections if provided
+            if persons is not None:
+                current_in_roi = [
+                    p for p in persons
+                    if self.roi_manager.is_detection_in_roi(roi_id, p, canvas_width, canvas_height)
+                ]
+                count = len(current_in_roi)
+            else:
+                count = len(tracked_persons)
+
             metrics[roi_id] = {
-                "count": len(persons_in_roi),
+                "count": count,
                 "zone_type": zone_type,
                 "people": [
                     {
                         "track_id": p.track_id,
                         "stay_time": round(p.stay_time, 1)
-                    } for p in persons_in_roi
+                    } for p in tracked_persons
                 ]
             }
         return metrics
@@ -482,7 +545,7 @@ class RuleEngine:
         return {
             "camera_id": camera_id,
             "active_violations": active_violations,
-            "overall_status": "CRITICAL" if active_violations else "OK"
+            "overall_status": "위험" if active_violations else "정상"
         }
 
 

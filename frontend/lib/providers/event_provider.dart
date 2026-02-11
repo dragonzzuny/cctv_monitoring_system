@@ -36,6 +36,11 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<SafetyEvent>>> {
     });
   }
 
+  /// Clear all displayed events from UI (does not delete from DB)
+  void clearDisplayedEvents() {
+    state = const AsyncValue.data([]);
+  }
+
   Future<void> acknowledgeEvent(int eventId) async {
     await _api.acknowledgeEvent(eventId);
     state.whenData((events) {

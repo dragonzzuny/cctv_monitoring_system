@@ -102,16 +102,24 @@ class _MainControlScreenState extends ConsumerState<MainControlScreen> {
                   ),
                   const SizedBox(width: 16),
                   
-                  // Right Column: Checklist & Timeline
+                  // Right Column: ROI Status, Checklist, Timeline
                   Expanded(
                     flex: 3,
                     child: Column(
                       children: [
+                        // ROI Zone Status Panel
+                        if (selectedCamera != null)
+                          const SizedBox(
+                            height: 180,
+                            child: RoiStatusPanel(),
+                          ),
+                        if (selectedCamera != null)
+                          const SizedBox(height: 12),
                         // Checklist Panel
                         const Expanded(
                           child: ChecklistPanel(),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         // Timeline Panel
                         const Expanded(
                           child: TimelinePanel(),
@@ -203,7 +211,7 @@ class _MainControlScreenState extends ConsumerState<MainControlScreen> {
             if (cameraId != null) {
               final camera = value.firstWhere((c) => c.id == cameraId);
               ref.read(selectedCameraProvider.notifier).state = camera;
-              ref.read(streamProvider.notifier).connect(camera.id);
+              // VideoPlayerWidget handles connection via camera change detection
             }
           },
         ),

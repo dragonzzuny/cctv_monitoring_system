@@ -31,24 +31,47 @@ class ROIManager:
             zone_type: "warning" or "danger"
         """
         try:
-            coords = [(p.x, p.y) for p in points]
+            # Detect if points are in pixel space (e.g., 1280x720) or normalized (0-1)
+            # Find max values to determine scaling
+            px_maxx = max(p.x for p in points)
+            px_maxy = max(p.y for p in points)
+            
+            # Heuristic for normalization
+            scale_x = 1.0
+            scale_y = 1.0
+            if px_maxx > 1.1:
+                # Based on user's ROI bounds (~1093, ~516), it looks like 1280x720
+                scale_x = 1280.0 if px_maxx > 1.1 else 1.0
+                scale_y = 720.0 if px_maxy > 1.1 else 1.0
+                
+                # If maxx is even larger (e.g. 1920), adjust
+                if px_maxx > 1300: scale_x = 1920.0
+                if px_maxy > 800: scale_y = 1080.0
+
+            normalized_points = []
+            for p in points:
+                nx = p.x / scale_x if scale_x > 1.0 else p.x
+                ny = p.y / scale_y if scale_y > 1.0 else p.y
+                normalized_points.append({"x": nx, "y": ny})
+            
+            coords = [(p["x"], p["y"]) for p in normalized_points]
             if len(coords) < 3:
                 logger.warning(f"ROI {roi_id} has less than 3 points, skipping")
                 return
 
             polygon = Polygon(coords)
             if not polygon.is_valid:
-                polygon = polygon.buffer(0)  # Try to fix invalid polygon
+                polygon = polygon.buffer(0)
 
             self._rois[roi_id] = {
                 "id": roi_id,
                 "name": name,
                 "color": color,
                 "zone_type": zone_type,
-                "points": [{"x": p.x, "y": p.y} for p in points],
+                "points": normalized_points,
                 "polygon": polygon
             }
-            logger.debug(f"Added ROI {roi_id}: {name} ({zone_type})")
+            logger.info(f"Added/Updated ROI {roi_id}: {name} ({zone_type}) - Normalized to {scale_x}x{scale_y}")
 
         except Exception as e:
             logger.error(f"Error adding ROI {roi_id}: {e}")
@@ -77,37 +100,39 @@ class ROIManager:
             for roi in self._rois.values()
         ]
 
-    def is_point_in_roi(self, roi_id: int, x: float, y: float) -> bool:
+    def is_point_in_roi(self, roi_id: int, x: float, y: float, canvas_width: float = 0.0, canvas_height: float = 0.0) -> bool:
         """
         Check if a point is inside a ROI.
-
-        Args:
-            roi_id: ROI identifier
-            x: X coordinate
-            y: Y coordinate
-
-        Returns:
-            True if point is inside ROI
+        Expects x, y as pixel coordinates from the detector.
+        Standardizes to normalized space for the comparison.
         """
         roi = self._rois.get(roi_id)
         if roi is None:
             return False
 
-        point = Point(x, y)
+        # Detection frame resolution (standardized in our system)
+        # However, we've seen detector output can be aligned with 'canvas_width'
+        DET_WIDTH = 640.0
+        DET_HEIGHT = 360.0
+        
+        # Use provided dimensions if available, otherwise fallback to DET_WIDTH/DET_HEIGHT
+        eff_width = canvas_width if canvas_width > 0 else DET_WIDTH
+        eff_height = canvas_height if canvas_height > 0 else DET_HEIGHT
+        
+        # Normalize the detection point
+        norm_x = x / eff_width
+        norm_y = y / eff_height
+        
+        point = Point(norm_x, norm_y)
         return roi["polygon"].contains(point)
 
-    def is_detection_in_roi(self, roi_id: int, detection: DetectionBox) -> bool:
+    def is_detection_in_roi(self, roi_id: int, detection: DetectionBox, canvas_width: float = 0.0, canvas_height: float = 0.0) -> bool:
         """
-        Check if a detection's center is inside a ROI.
-
-        Args:
-            roi_id: ROI identifier
-            detection: Detection box
-
-        Returns:
-            True if detection center is inside ROI
+        Check if a detection's bottom-center (feet) is inside a ROI.
         """
-        return self.is_point_in_roi(roi_id, detection.center_x, detection.center_y)
+        # FOOT BASED: Use bottom-center for ROI check
+        res = self.is_point_in_roi(roi_id, detection.center_x, detection.y2, canvas_width, canvas_height)
+        return res
 
     def is_detection_box_in_roi(
         self,

@@ -77,22 +77,36 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
     }
 
     try {
-      final roi = ROICreate(
-        cameraId: camera.id,
-        name: _nameController.text,
-        points: editingState.currentPoints,
-        color: _selectedColor,
-        zoneType: _selectedZoneType,
-      );
+      if (editingState.editingRoiId != null) {
+        // Update existing ROI
+        await ref.read(roisProvider.notifier).updateRoi(
+          editingState.editingRoiId!,
+          {
+            'name': _nameController.text,
+            'points': editingState.currentPoints.map((p) => p.toJson()).toList(),
+            'color': _selectedColor,
+            'zone_type': _selectedZoneType,
+          },
+        );
+      } else {
+        // Create new ROI
+        final roi = ROICreate(
+          cameraId: camera.id,
+          name: _nameController.text,
+          points: editingState.currentPoints,
+          color: _selectedColor,
+          zoneType: _selectedZoneType,
+        );
+        await ref.read(roisProvider.notifier).addRoi(roi);
+      }
 
-      await ref.read(roisProvider.notifier).addRoi(roi);
-
+      ref.read(streamProvider.notifier).reloadRois();
       ref.read(roiEditingProvider.notifier).stopEditing();
       _nameController.clear();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ROI가 저장되었습니다.')),
+          SnackBar(content: Text(editingState.editingRoiId != null ? 'ROI가 수정되었습니다.' : 'ROI가 저장되었습니다.')),
         );
       }
     } catch (e) {
@@ -102,6 +116,15 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
         );
       }
     }
+  }
+
+  void _startEditRoi(ROI roi) {
+    ref.read(roiEditingProvider.notifier).startEditingRoi(roi);
+    _nameController.text = roi.name;
+    setState(() {
+      _selectedColor = roi.color;
+      _selectedZoneType = roi.zoneType;
+    });
   }
 
   Future<void> _deleteRoi(ROI roi) async {
@@ -126,6 +149,9 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
 
     if (confirmed == true) {
       await ref.read(roisProvider.notifier).deleteRoi(roi.id);
+      
+      // Signal stream to reload ROIs if active
+      ref.read(streamProvider.notifier).reloadRois();
     }
   }
 
@@ -160,6 +186,11 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
                         Switch(
                           value: roi.isActive,
                           onChanged: (value) => ref.read(roisProvider.notifier).updateRoi(roi.id, {'is_active': value}),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          color: Colors.blue,
+                          onPressed: () => _startEditRoi(roi),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete),
@@ -233,16 +264,23 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
                                   // Get the image dimensions
                                   if (_imageSize == null) return;
 
-                                  // Calculate scale
-                                  final scaleX = _imageSize!.width / constraints.maxWidth;
-                                  final scaleY = _imageSize!.height / constraints.maxHeight;
+                                  // Calculate scale and offset (BoxFit.contain logic)
+                                  final scaleX = constraints.maxWidth / _imageSize!.width;
+                                  final scaleY = constraints.maxHeight / _imageSize!.height;
+                                  final scale = scaleX < scaleY ? scaleX : scaleY;
 
-                                  final point = Point(
-                                    x: localPos.dx * scaleX,
-                                    y: localPos.dy * scaleY,
-                                  );
+                                  final offsetX = (constraints.maxWidth - _imageSize!.width * scale) / 2;
+                                  final offsetY = (constraints.maxHeight - _imageSize!.height * scale) / 2;
 
-                                  ref.read(roiEditingProvider.notifier).addPoint(point);
+                                  // Convert screen coordinates to image coordinates
+                                  double x = (localPos.dx - offsetX) / scale;
+                                  double y = (localPos.dy - offsetY) / scale;
+
+                                  // Clamp to image bounds
+                                  x = x.clamp(0.0, _imageSize!.width);
+                                  y = y.clamp(0.0, _imageSize!.height);
+
+                                  ref.read(roiEditingProvider.notifier).addPoint(Point(x: x, y: y));
                                 }
                               : null,
                           child: Stack(
@@ -251,19 +289,22 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
                               Image.memory(
                                 _snapshotBytes!,
                                 fit: BoxFit.contain,
-                                frameBuilder: (context, child, frame, loaded) {
-                                  if (loaded && _imageSize == null) {
+                                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                  // frame is non-null when the first frame is available
+                                  if (frame != null && _imageSize == null) {
                                     // Get original image size
                                     WidgetsBinding.instance.addPostFrameCallback((_) {
                                       final imageProvider = MemoryImage(_snapshotBytes!);
-                                      imageProvider.resolve(ImageConfiguration.empty).addListener(
+                                      imageProvider.resolve(const ImageConfiguration()).addListener(
                                         ImageStreamListener((info, _) {
-                                          setState(() {
-                                            _imageSize = Size(
-                                              info.image.width.toDouble(),
-                                              info.image.height.toDouble(),
-                                            );
-                                          });
+                                          if (mounted) {
+                                            setState(() {
+                                              _imageSize = Size(
+                                                info.image.width.toDouble(),
+                                                info.image.height.toDouble(),
+                                              );
+                                            });
+                                          }
                                         }),
                                       );
                                     });
@@ -304,7 +345,7 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
                   children: [
                     if (editingState.isEditing) ...[
                       Text(
-                        '새 ROI 생성',
+                        editingState.editingRoiId != null ? 'ROI 수정' : '새 ROI 생성',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 16),
@@ -422,7 +463,7 @@ class _RoiEditorScreenState extends ConsumerState<RoiEditorScreen> {
                               ? _saveRoi
                               : null,
                           icon: const Icon(Icons.save),
-                          label: const Text('ROI 저장'),
+                          label: Text(editingState.editingRoiId != null ? 'ROI 수정' : 'ROI 저장'),
                         ),
                       ),
                       const Divider(height: 32),

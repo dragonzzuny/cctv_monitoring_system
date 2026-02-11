@@ -1,8 +1,8 @@
 """
 Detection schemas for YOLO results and streaming.
 """
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional, Any
 
 
 class DetectionBox(BaseModel):
@@ -38,6 +38,9 @@ class StreamFrame(BaseModel):
     total_ms: float = 0.0
     detection: Optional[DetectionResult] = None
     events: List[dict] = Field(default_factory=list, description="New events for this frame")
+    raw_frame: Optional[Any] = Field(None, exclude=True, description="Raw numpy frame for event processing")
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SafetyStatus(BaseModel):

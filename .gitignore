@@ -38,3 +38,4 @@ backend/snapshots/
 
 # Training artifacts
 rfdetr_complete/
+docs/

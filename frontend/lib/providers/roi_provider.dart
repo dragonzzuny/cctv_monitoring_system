@@ -60,28 +60,36 @@ final roisProvider =
 /// ROI editing state
 class RoiEditingState {
   final bool isEditing;
+  final int? editingRoiId; // null = new ROI, non-null = editing existing
   final List<Point> currentPoints;
   final String currentName;
   final String currentColor;
+  final String currentZoneType;
 
   RoiEditingState({
     this.isEditing = false,
+    this.editingRoiId,
     this.currentPoints = const [],
     this.currentName = '',
     this.currentColor = '#FF0000',
+    this.currentZoneType = 'warning',
   });
 
   RoiEditingState copyWith({
     bool? isEditing,
+    int? editingRoiId,
     List<Point>? currentPoints,
     String? currentName,
     String? currentColor,
+    String? currentZoneType,
   }) {
     return RoiEditingState(
       isEditing: isEditing ?? this.isEditing,
+      editingRoiId: editingRoiId ?? this.editingRoiId,
       currentPoints: currentPoints ?? this.currentPoints,
       currentName: currentName ?? this.currentName,
       currentColor: currentColor ?? this.currentColor,
+      currentZoneType: currentZoneType ?? this.currentZoneType,
     );
   }
 }
@@ -92,6 +100,18 @@ class RoiEditingNotifier extends StateNotifier<RoiEditingState> {
 
   void startEditing() {
     state = RoiEditingState(isEditing: true);
+  }
+
+  /// Start editing an existing ROI
+  void startEditingRoi(ROI roi) {
+    state = RoiEditingState(
+      isEditing: true,
+      editingRoiId: roi.id,
+      currentPoints: List.from(roi.points),
+      currentName: roi.name,
+      currentColor: roi.color,
+      currentZoneType: roi.zoneType,
+    );
   }
 
   void stopEditing() {

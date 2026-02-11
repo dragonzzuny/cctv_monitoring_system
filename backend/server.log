@@ -1,0 +1,39 @@
+INFO:     Started server process [24204]
+INFO:     Waiting for application startup.
+2026-02-11 17:05:34,210 - app.main - INFO - Starting CCTV Safety Monitoring System v1.0.0
+2026-02-11 17:05:34,217 - app.main - INFO - Database initialized
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     ('127.0.0.1', 63863) - "WebSocket /ws/stream/3" [accepted]
+2026-02-11 17:05:55,119 - app.api.websocket - INFO - Client connected to camera 3
+INFO:     connection open
+2026-02-11 17:05:55,123 - app.core.roi_manager - INFO - Added/Updated ROI 2: 작업구역 A (warning) - Normalized to 1280.0x720.0
+2026-02-11 17:05:55,124 - app.core.roi_manager - INFO - Added/Updated ROI 3: 작업구역 B (warning) - Normalized to 1280.0x720.0
+2026-02-11 17:05:55,124 - app.api.websocket - INFO - Loaded 2 ROIs for camera 3
+2026-02-11 17:05:55,137 - app.core.video_processor - INFO - Video opened: 1280x720 @ 15.039687507229726fps, total frames: 4500
+2026-02-11 17:05:55,137 - app.api.websocket - INFO - Starting stream for camera 3
+2026-02-11 17:05:55,218 - app.core.tracker - INFO - Successfully initialized ultralytics BoT-SORT
+2026-02-11 17:05:55,218 - app.core.detection - INFO - BoT-SORT tracker integrated with RF-DETR
+Using a different number of positional encodings than DINOv2, which means we're not loading DINOv2 backbone weights. This is not a problem if finetuning a pretrained RF-DETR model.
+Using patch size 16 instead of 14, which means we're not loading DINOv2 backbone weights. This is not a problem if finetuning a pretrained RF-DETR model.
+2026-02-11 17:05:55,867 - app.core.detection - INFO - Reinitialized RF-DETR detection head to 12 classes
+2026-02-11 17:05:55,895 - app.core.detection - INFO - Loaded RF-DETR state_dict successfully
+2026-02-11 17:05:55,917 - rfdetr.detr - WARNING - Model is not optimized for inference. Latency may be higher than expected. You can optimize the model for inference by calling model.optimize_for_inference().
+UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\TensorShape.cpp:4324.)
+2026-02-11 17:05:56,241 - app.core.alarm_manager - INFO - Event processed: [INFO] PERSON_ENTRANCE - ID 1000 작업자 입장 (작업구역 A)
+2026-02-11 17:05:57,524 - app.api.websocket - INFO - Seeking to 149604ms during stream
+2026-02-11 17:05:57,834 - app.core.alarm_manager - INFO - Event processed: [INFO] PERSON_EXIT - ID 1000 작업자 퇴장 (작업구역 A, 체류시간: 1.1초)
+2026-02-11 17:05:57,843 - app.core.alarm_manager - INFO - Event processed: [INFO] PERSON_ENTRANCE - ID 1000 작업자 입장 (작업구역 B)
+2026-02-11 17:05:59,093 - app.api.websocket - ERROR - WebSocket error: 
+2026-02-11 17:05:59,100 - app.api.websocket - INFO - Client disconnected from camera 3
+INFO:     connection closed
+INFO:     ('127.0.0.1', 63865) - "WebSocket /ws/stream/4" [accepted]
+2026-02-11 17:06:02,828 - app.api.websocket - INFO - Client connected to camera 4
+INFO:     connection open
+2026-02-11 17:06:02,832 - app.api.websocket - INFO - Loaded 0 ROIs for camera 4
+2026-02-11 17:06:02,837 - app.core.video_processor - INFO - Video opened: 640x360 @ 25.0fps, total frames: 4784
+2026-02-11 17:06:02,838 - app.api.websocket - INFO - Starting stream for camera 4
+2026-02-11 17:06:04,233 - app.api.websocket - INFO - Seeking to 95680ms during stream
+2026-02-11 17:06:05,574 - app.api.websocket - ERROR - WebSocket error: 
+2026-02-11 17:06:05,578 - app.api.websocket - INFO - Client disconnected from camera 4
+INFO:     connection closed

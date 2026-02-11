@@ -136,7 +136,10 @@ class RFDETRDetector(BaseDetector):
             logger.error("RF-DETR not installed")
             return False
         try:
-            self.model = RFDETRMedium()
+            # Initialize with correct positional encoding size, NO pretrain weights, and correct device
+            device_str = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model = RFDETRMedium(positional_encoding_size=32, pretrain_weights=None, device=device_str)
+            
             # Extract state_dict from checkpoint (supports various formats)
             checkpoint = torch.load(settings.BASE_DIR / self.model_path, map_location='cpu', weights_only=False)
             if isinstance(checkpoint, dict):
@@ -150,10 +153,34 @@ class RFDETRDetector(BaseDetector):
                     state_dict = checkpoint
             else:
                 state_dict = checkpoint
-            self.model.load_state_dict(state_dict, strict=False)
-            self.model.eval()
-            if torch.cuda.is_available():
-                self.model.cuda()
+
+            # RFDETRMedium is a wrapper; reinitialize head to match checkpoint (11 PPE classes + 1 background = 12)
+            if hasattr(self.model, 'model') and hasattr(self.model.model, 'reinitialize_detection_head'):
+                self.model.model.reinitialize_detection_head(12)
+                logger.info("Reinitialized RF-DETR detection head to 12 classes")
+            
+            # Use safety checks for nested attributes for loading state_dict
+            target_model = self.model
+            if hasattr(self.model, 'model'):
+                target_model = self.model.model
+                if hasattr(target_model, 'model'):
+                    target_model = target_model.model
+            
+            if hasattr(target_model, 'load_state_dict'):
+                target_model.load_state_dict(state_dict, strict=False)
+                logger.info("Loaded RF-DETR state_dict successfully")
+                target_model.eval()
+                
+                # Optimize for inference
+                if hasattr(target_model, 'optimize_for_inference'):
+                    target_model.optimize_for_inference()
+                    logger.info("Optimized RF-DETR for inference")
+                
+                if torch.cuda.is_available():
+                    target_model.cuda()
+            else:
+                logger.warning("Could not find load_state_dict on RF-DETR model or its internals")
+            
             self._is_loaded = True
             return True
         except Exception as e:
@@ -169,35 +196,55 @@ class RFDETRDetector(BaseDetector):
         counts = {"persons_count": 0, "helmets_count": 0, "masks_count": 0, "fire_extinguishers_count": 0}
 
         try:
-            # Prepare frame for DETR (standard preprocessing)
-            # This is a simplified version; real RF-DETR might need sahi slicing or specific transforms
-            results = self.model.predict(frame, conf=settings.RFDETR_CONFIDENCE_THRESHOLD)
+            # results typically returns sv.Detections or a list of them
+            results = self.model.predict(frame, threshold=settings.RFDETR_CONFIDENCE_THRESHOLD)
             
-            # results here should be converted to a format BoT-SORT expects: [x1, y1, x2, y2, score, cls]
-            raw_detections = []
-            for res in results:
-                raw_detections.append([res.x1, res.y1, res.x2, res.y2, res.confidence, res.class_id])
+            # Ensure we have a single sv.Detections object
+            if isinstance(results, list):
+                results = results[0] if len(results) > 0 else None
+            
+            if results is None or len(results) == 0:
+                return DetectionResult(frame_number=frame_number, timestamp=timestamp, detections=[], **counts)
+
+            # Convert sv.Detections to [x1, y1, x2, y2, score, cls] format for tracker
+            raw_detections = np.column_stack([
+                results.xyxy,
+                results.confidence,
+                results.class_id
+            ])
 
             # Apply BoT-SORT tracking
             tracked_objects = []
             if self.tracker:
-                tracked_objects = self.tracker.update(np.array(raw_detections), frame)
+                tracked_objects = self.tracker.update(raw_detections, frame)
             
             # Map tracked objects back to DetectionBox
-            # tracked_objects: [x1, y1, x2, y2, track_id, score, cls] (typical BoT-SORT output)
-            for obj in tracked_objects:
-                x1, y1, x2, y2, tid, conf, cls_id = obj
-                cls_id = int(cls_id)
-                class_name = settings.CLASS_NAMES[cls_id] if cls_id < len(settings.CLASS_NAMES) else f"obj_{cls_id}"
-                
-                category, counts = self._map_category(class_name, counts)
-                
-                detections.append(DetectionBox(
-                    class_id=cls_id, class_name=category, confidence=conf,
-                    x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2),
-                    center_x=float((x1+x2)/2), center_y=float((y1+y2)/2),
-                    track_id=int(tid)
-                ))
+            # If tracking failed or returned empty, use raw detections with no track_id
+            if len(tracked_objects) == 0:
+                for i in range(len(raw_detections)):
+                    x1, y1, x2, y2, conf, cls_id = raw_detections[i]
+                    cls_id = int(cls_id)
+                    class_name = settings.CLASS_NAMES[cls_id] if cls_id < len(settings.CLASS_NAMES) else f"obj_{cls_id}"
+                    category, counts = self._map_category(class_name, counts)
+                    detections.append(DetectionBox(
+                        class_id=cls_id, class_name=category, confidence=float(conf),
+                        x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2),
+                        center_x=float((x1+x2)/2), center_y=float((y1+y2)/2),
+                        track_id=None
+                    ))
+            else:
+                for obj in tracked_objects:
+                    # Output format: [x1, y1, x2, y2, id, conf, cls]
+                    x1, y1, x2, y2, tid, conf, cls_id = obj
+                    cls_id = int(cls_id)
+                    class_name = settings.CLASS_NAMES[cls_id] if cls_id < len(settings.CLASS_NAMES) else f"obj_{cls_id}"
+                    category, counts = self._map_category(class_name, counts)
+                    detections.append(DetectionBox(
+                        class_id=cls_id, class_name=category, confidence=float(conf),
+                        x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2),
+                        center_x=float((x1+x2)/2), center_y=float((y1+y2)/2),
+                        track_id=int(tid)
+                    ))
 
         except Exception as e:
             logger.error(f"RF-DETR Detection error: {e}")
@@ -237,7 +284,17 @@ class RFDETRDetector(BaseDetector):
         return self._is_loaded
 
 # Factory function
+# Global cache for detector instance
+_detector_instance: Optional[BaseDetector] = None
+
 def get_detector() -> BaseDetector:
+    global _detector_instance
+    if _detector_instance is not None:
+        return _detector_instance
+
     if settings.DETECTOR_TYPE == "rfdetr":
-        return RFDETRDetector()
-    return YOLODetector()
+        _detector_instance = RFDETRDetector()
+    else:
+        _detector_instance = YOLODetector()
+    
+    return _detector_instance

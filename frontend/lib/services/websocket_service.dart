@@ -14,48 +14,79 @@ class WebSocketService {
 
   bool _isStreamConnected = false;
   bool _isEventConnected = false;
+  double _lastTotalDurationMs = 0.0;
 
   WebSocketService({this.baseUrl = 'ws://localhost:8001'});
 
   bool get isStreamConnected => _isStreamConnected;
   bool get isEventConnected => _isEventConnected;
+  double get lastTotalDurationMs => _lastTotalDurationMs;
 
   /// Connect to camera stream
   Future<Stream<StreamFrame>> connectToStream(int cameraId) async {
     await disconnectStream();
 
     _frameController = StreamController<StreamFrame>.broadcast();
+    final controller = _frameController!;
 
     final uri = Uri.parse('$baseUrl/ws/stream/$cameraId');
     _streamChannel = WebSocketChannel.connect(uri);
 
     _isStreamConnected = true;
 
+    // Capture local ref to prevent stale closure from affecting new connections
     _streamChannel!.stream.listen(
       (message) {
         try {
           final data = jsonDecode(message);
           if (data['type'] == 'frame') {
+            // Inject cached totalDuration if frame doesn't have it
+            if ((data['total_ms'] == null || data['total_ms'] == 0) && _lastTotalDurationMs > 0) {
+              data['total_ms'] = _lastTotalDurationMs;
+            }
             final frame = StreamFrame.fromJson(data);
-            _frameController?.add(frame);
+            // Cache totalMs from frame data too
+            if (frame.totalMs > 0) {
+              _lastTotalDurationMs = frame.totalMs;
+            }
+            if (!controller.isClosed) {
+              controller.add(frame);
+            }
+          } else if (data['type'] == 'metadata') {
+            final durationMs = (data['total_duration_ms'] as num?)?.toDouble() ?? 0.0;
+            if (durationMs > 0) {
+              _lastTotalDurationMs = durationMs;
+              
+              // Emit synthetic frame to update totalDuration immediately
+              if (!controller.isClosed) {
+                controller.add(StreamFrame(
+                  cameraId: data['camera_id'] ?? 0,
+                  frameBase64: '', // Empty frame
+                  currentMs: 0.0,
+                  totalMs: durationMs,
+                ));
+              }
+            }
           }
         } catch (e) {
           // parse error ignored
         }
       },
       onError: (error) {
-        // stream error
         _isStreamConnected = false;
-        _frameController?.addError(error);
+        if (!controller.isClosed) {
+          controller.addError(error);
+        }
       },
       onDone: () {
-        // stream closed
         _isStreamConnected = false;
-        _frameController?.close();
+        if (!controller.isClosed) {
+          controller.close();
+        }
       },
     );
 
-    return _frameController!.stream;
+    return controller.stream;
   }
 
   /// Send command to stream
@@ -94,6 +125,7 @@ class WebSocketService {
       // Channel may already be closed
     }
     _streamChannel = null;
+    _lastTotalDurationMs = 0.0;
     try {
       await _frameController?.close();
     } catch (_) {
@@ -107,6 +139,7 @@ class WebSocketService {
     await disconnectEvents();
 
     _eventController = StreamController<Map<String, dynamic>>.broadcast();
+    final controller = _eventController!;
 
     final uri = Uri.parse('$baseUrl/ws/events');
     _eventChannel = WebSocketChannel.connect(uri);
@@ -117,24 +150,28 @@ class WebSocketService {
       (message) {
         try {
           final data = jsonDecode(message);
-          _eventController?.add(data);
+          if (!controller.isClosed) {
+            controller.add(data);
+          }
         } catch (e) {
           // parse error ignored
         }
       },
       onError: (error) {
-        // event ws error
         _isEventConnected = false;
-        _eventController?.addError(error);
+        if (!controller.isClosed) {
+          controller.addError(error);
+        }
       },
       onDone: () {
-        // event ws closed
         _isEventConnected = false;
-        _eventController?.close();
+        if (!controller.isClosed) {
+          controller.close();
+        }
       },
     );
 
-    return _eventController!.stream;
+    return controller.stream;
   }
 
   /// Acknowledge event via WebSocket
