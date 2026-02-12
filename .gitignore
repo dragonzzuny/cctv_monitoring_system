@@ -1,0 +1,18 @@
+
+# ===== Large ML weights =====
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.pkl
+
+# (원하면 폴더 단위로도)
+backend/models/
+
+# ===== Windows / Flutter build artifacts =====
+*.pdb
+frontend/windows/flutter/ephemeral/
+**/ephemeral/
+**/build/
+**/.dart_tool/
+

@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-copyfile.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\5988c37dc08bdb8382aecfcbd6a576c0\nuget-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\6f6cf9f012c2c6f360b0c3c80783fee5\nuget-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\88a29bc48b491b436678cc8279a65ff5\nuget-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\_deps\nuget-subbuild\CMakeFiles\nuget-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{F42D8B28-A46F-3C61-A7EA-ED772540D682}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

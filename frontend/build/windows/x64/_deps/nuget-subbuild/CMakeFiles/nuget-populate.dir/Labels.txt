@@ -1,0 +1,15 @@
+# Target labels
+ nuget-populate
+# Source files and their labels
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/nuget-populate
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/88a29bc48b491b436678cc8279a65ff5/nuget-populate.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/6f6cf9f012c2c6f360b0c3c80783fee5/nuget-populate-complete.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-build.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-configure.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-copyfile.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-download.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-install.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-mkdir.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-patch.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-test.rule
+C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-update.rule

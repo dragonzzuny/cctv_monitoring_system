@@ -1,0 +1,28 @@
+^C:\USERS\YJP\DESKTOP\CCTV_YOLO\FRONTEND\BUILD\WINDOWS\X64\CMAKEFILES\F18232F033112BEFFA5125D4208BA291\FLUTTER_WINDOWS.DLL.RULE
+setlocal
+D:\vsbuild\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe -E env FLUTTER_ROOT=D:\flutter PROJECT_DIR=C:\Users\YJP\Desktop\cctv_yolo\frontend FLUTTER_ROOT=D:\flutter FLUTTER_EPHEMERAL_DIR=C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral PROJECT_DIR=C:\Users\YJP\Desktop\cctv_yolo\frontend FLUTTER_TARGET=C:\Users\YJP\Desktop\cctv_yolo\frontend\lib\main.dart DART_DEFINES=RkxVVFRFUl9WRVJTSU9OPTMuMzIuMw==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049NWMxNDMzNTA5Zg==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049MzFjNDg3NWM3YQ==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My44LjE= DART_OBFUSCATION=false TRACK_WIDGET_CREATION=true TREE_SHAKE_ICONS=false PACKAGE_CONFIG=C:\Users\YJP\Desktop\cctv_yolo\frontend\.dart_tool\package_config.json D:/flutter/packages/flutter_tools/bin/tool_backend.bat windows-x64 Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\YJP\DESKTOP\CCTV_YOLO\FRONTEND\BUILD\WINDOWS\X64\CMAKEFILES\2E20642AE738946FCBEAFA658F743A42\FLUTTER_ASSEMBLE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\YJP\DESKTOP\CCTV_YOLO\FRONTEND\WINDOWS\FLUTTER\CMAKELISTS.TXT
+setlocal
+D:\vsbuild\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe -SC:/Users/YJP/Desktop/cctv_yolo/frontend/windows -BC:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64 --check-stamp-file C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/flutter/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

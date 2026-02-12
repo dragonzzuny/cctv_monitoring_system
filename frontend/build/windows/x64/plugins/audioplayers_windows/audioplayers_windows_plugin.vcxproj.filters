@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\audioplayers_windows_plugin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\audio_player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\MediaEngineExtension.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\MediaEngineWrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\audio_player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\audioplayers_helpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\event_stream_handler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\MediaEngineExtension.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\MediaFoundationHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\MediaEngineWrapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\windows\flutter\ephemeral\.plugin_symlinks\audioplayers_windows\windows\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{1A8BB5C0-82EF-3381-BDC7-A5AA302811BF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{65A6FD3B-2361-3507-8EC3-C62782E669AF}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

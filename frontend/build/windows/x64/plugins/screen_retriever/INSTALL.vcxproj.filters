@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\YJP\Desktop\cctv_yolo\frontend\build\windows\x64\CMakeFiles\1a2fb9e701f4f23018553225e389a97f\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{E5A95148-FE45-3367-B1CC-BBE3C38D426D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

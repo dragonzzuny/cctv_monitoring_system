@@ -1,0 +1,49 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/nuget-populate"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/88a29bc48b491b436678cc8279a65ff5/nuget-populate.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/6f6cf9f012c2c6f360b0c3c80783fee5/nuget-populate-complete.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-build.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-configure.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-copyfile.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-download.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-install.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-mkdir.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-patch.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-test.rule"
+		},
+		{
+			"file" : "C:/Users/YJP/Desktop/cctv_yolo/frontend/build/windows/x64/_deps/nuget-subbuild/CMakeFiles/5988c37dc08bdb8382aecfcbd6a576c0/nuget-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"nuget-populate"
+		],
+		"name" : "nuget-populate"
+	}
+}
